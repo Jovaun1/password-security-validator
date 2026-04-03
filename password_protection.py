@@ -23,6 +23,17 @@ def brute_force_test():
 
     while attempts < max_attempts:
         test_password = input("Enter password: ")
+
+        # NEW: Check password strength FIRST
+        strength = check_password_strength(test_password)
+        print(f"Password Strength: {strength}")
+
+        if "Weak" in strength:
+            print("Weak password not allowed. Try again.")
+            attempts += 1
+            continue
+
+        #  THEN check if correct password
         if test_password == correct_password:
             print("Access Granted")
             return
