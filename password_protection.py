@@ -1,67 +1,86 @@
 import re
 import time
 
-# Sample stored password
-correct_password = "Secure@123"
+# =========================
+# CONSTANTS (NEW IMPROVEMENT)
+# Using constants improves readability and maintainability
+# =========================
+CORRECT_PASSWORD = "Secure@123"
+MAX_ATTEMPTS = 3  # Limits login attempts to prevent brute force attacks
+
 
 # Function to check password strength
 def check_password_strength(password):
     if len(password) < 8:
         return "Weak: Too short"
     if not re.search("[A-Z]", password):
-        return "Weak: Missing uppercase"
+        return "Weak: Missing uppercase letter"
     if not re.search("[0-9]", password):
         return "Weak: Missing number"
     if not re.search("[@#$%]", password):
         return "Weak: Missing special character"
     return "Strong password"
 
-# Function to simulate brute force attack
+
+# Function to simulate brute force attack (login system)
 def brute_force_test():
     attempts = 0
-    max_attempts = 3
 
-    while attempts < max_attempts:
+    while attempts < MAX_ATTEMPTS:
         test_password = input("Enter password: ")
 
-        # NEW: Check password strength FIRST
+        # =========================
+        # NEW IMPROVEMENT:
+        # Enforce password strength BEFORE authentication
+        # Prevents weak passwords from being used
+        # =========================
         strength = check_password_strength(test_password)
         print(f"Password Strength: {strength}")
 
         if "Weak" in strength:
-            print("Weak password not allowed. Try again.")
+            print("Weak password not allowed. Try again.\n")
             attempts += 1
-            continue
+            continue  # Skip authentication if password is weak
 
-        #  THEN check if correct password
-        if test_password == correct_password:
+        # =========================
+        # EXISTING LOGIC (ENHANCED BY SECURITY CHECK)
+        # =========================
+        if test_password == CORRECT_PASSWORD:
             print("Access Granted")
             return
         else:
-            print("Access Denied")
+            print("Access Denied\n")
             attempts += 1
 
+    # =========================
+    # NEW IMPROVEMENT:
+    # Lock account after max attempts to prevent brute force attacks
+    # =========================
     print("Account Locked due to multiple failed attempts")
 
-# Function to test dictionary attack
+
+# Function to test dictionary attack vulnerability
 def dictionary_attack_test():
     common_passwords = ["123456", "password", "admin", "qwerty"]
 
-    for pwd in common_passwords:
-        if pwd == correct_password:
-            print("Vulnerable to dictionary attack")
-            return
+    if CORRECT_PASSWORD in common_passwords:
+        print("Vulnerable to dictionary attack")
+    else:
+        print("Not vulnerable to common passwords")
 
-    print("Not vulnerable to common passwords")
 
-# Function to test SQL injection
+# Function to test SQL injection input
 def sql_injection_test(input_value):
     if "'" in input_value or "--" in input_value:
         print("Potential SQL Injection detected")
     else:
         print("Input is safe")
 
-# Run tests
+
+# =========================
+# RUN TESTS
+# =========================
+
 print("Password Strength Test:")
 print(check_password_strength("weak"))
 
