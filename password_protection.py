@@ -1,92 +1,134 @@
 import re
 import time
 import hashlib
+import os
+from datetime import datetime
 
 # =========================
 # CONSTANTS (IMPROVED)
 # =========================
-# Using constants improves maintainability and security control
 PLAIN_PASSWORD = "Secure@123"
-
-# NEW: Store password as HASH instead of plain text (security best practice)
 CORRECT_PASSWORD = hashlib.sha256(PLAIN_PASSWORD.encode()).hexdigest()
 
-MAX_ATTEMPTS = 3  # Limits login attempts
-LOCKOUT_DELAY = 2  # NEW: Delay (seconds) after failed attempt to slow brute force
+MAX_ATTEMPTS = 3
+LOCKOUT_DELAY = 2
+
+# NEW: File storage for users + logs
+USER_FILE = "users.txt"
+LOG_FILE = "log.txt"
+
 
 # =========================
-# FUNCTION: HASH PASSWORD (NEW)
+# FUNCTION: HASH PASSWORD
 # =========================
-# Converts user input into hashed value for secure comparison
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
 # =========================
-# FUNCTION: PASSWORD STRENGTH CHECK (ENHANCED)
+# FUNCTION: PASSWORD STRENGTH SCORE (NEW)
+# =========================
+# Gives numeric score instead of just Weak/Strong
+def password_strength_score(password):
+    score = 0
+
+    if len(password) >= 8:
+        score += 1
+    if re.search("[A-Z]", password):
+        score += 1
+    if re.search("[a-z]", password):
+        score += 1
+    if re.search("[0-9]", password):
+        score += 1
+    if re.search("[@#$%]", password):
+        score += 1
+
+    return score
+
+
+# =========================
+# FUNCTION: PASSWORD STRENGTH CHECK (UPDATED)
 # =========================
 def check_password_strength(password):
-    if len(password) < 8:
-        return "Weak: Too short"
-    if not re.search("[A-Z]", password):
-        return "Weak: Missing uppercase letter"
-    if not re.search("[a-z]", password):  # NEW: Check lowercase
-        return "Weak: Missing lowercase letter"
-    if not re.search("[0-9]", password):
-        return "Weak: Missing number"
-    if not re.search("[@#$%]", password):
-        return "Weak: Missing special character"
-    return "Strong password"
+    score = password_strength_score(password)
+    return f"Score: {score}/5"
 
 
 # =========================
-# FUNCTION: BRUTE FORCE TEST (SECURITY ENHANCED)
+# FUNCTION: LOGGING SYSTEM (NEW)
 # =========================
-def brute_force_test():
+def log_event(message):
+    with open(LOG_FILE, "a") as file:
+        file.write(f"{datetime.now()} - {message}\n")
+
+
+# =========================
+# FUNCTION: REGISTER USER (NEW)
+# =========================
+def register_user():
+    username = input("Enter new username: ")
+    password = input("Enter new password: ")
+
+    score = password_strength_score(password)
+    print(f"Password Strength Score: {score}/5")
+
+    # Enforce stronger password policy
+    if score < 4:
+        print("Password too weak. Registration failed.\n")
+        return
+
+    hashed = hash_password(password)
+
+    with open(USER_FILE, "a") as file:
+        file.write(f"{username},{hashed}\n")
+
+    print("User registered successfully!\n")
+    log_event(f"User registered: {username}")
+
+
+# =========================
+# FUNCTION: LOGIN SYSTEM (NEW)
+# =========================
+def login():
+    if not os.path.exists(USER_FILE):
+        print("No users found. Please register first.\n")
+        return
+
+    username = input("Enter username: ")
     attempts = 0
 
     while attempts < MAX_ATTEMPTS:
-        test_password = input("Enter password: ")
+        password = input("Enter password: ")
 
-        # =========================
-        # NEW: Check password strength BEFORE authentication
-        # =========================
-        strength = check_password_strength(test_password)
-        print(f"Password Strength: {strength}")
+        print(check_password_strength(password))
 
-        if "Weak" in strength:
-            print("Weak password not allowed. Try again.\n")
-            attempts += 1
-            continue
+        hashed_input = hash_password(password)
 
-        # =========================
-        # NEW: HASH INPUT before comparison (secure authentication)
-        # =========================
-        hashed_input = hash_password(test_password)
+        with open(USER_FILE, "r") as file:
+            users = file.readlines()
 
-        if hashed_input == CORRECT_PASSWORD:
-            print("Access Granted")
-            return
-        else:
-            print("Access Denied\n")
-            attempts += 1
+        for user in users:
+            stored_username, stored_password = user.strip().split(",")
 
-            # =========================
-            # NEW: Delay to slow brute force attacks
-            # =========================
-            time.sleep(LOCKOUT_DELAY)
+            if username == stored_username:
+                if hashed_input == stored_password:
+                    print("Login successful!\n")
+                    log_event(f"Successful login: {username}")
+                    return
+                else:
+                    print("Incorrect password\n")
+                    log_event(f"Failed login: {username}")
+                    break
 
-            # =========================
-            # NEW: Log failed attempt (security monitoring)
-            # =========================
-            with open("log.txt", "a") as file:
-                file.write("Failed login attempt\n")
+        attempts += 1
+        time.sleep(LOCKOUT_DELAY)
 
-    print("Account Locked due to multiple failed attempts")
+    print("Account Locked due to multiple failed attempts\n")
+    log_event(f"Account locked: {username}")
 
 
 # =========================
-# FUNCTION: DICTIONARY ATTACK TEST (ENHANCED)
+# FUNCTION: DICTIONARY ATTACK TEST
 # =========================
 def dictionary_attack_test():
     common_passwords = ["123456", "password", "admin", "qwerty"]
@@ -98,49 +140,53 @@ def dictionary_attack_test():
 
 
 # =========================
-# FUNCTION: SQL INJECTION TEST (IMPROVED)
+# FUNCTION: SQL INJECTION TEST
 # =========================
 def sql_injection_test(input_value):
-    # NEW: Expanded detection patterns
     dangerous_patterns = ["'", "--", ";", "DROP", "SELECT"]
 
     for pattern in dangerous_patterns:
         if pattern.lower() in input_value.lower():
             print("Potential SQL Injection detected")
+            log_event("SQL Injection attempt detected")
             return
 
     print("Input is safe")
 
 
 # =========================
-# MAIN MENU (NEW - UI IMPROVEMENT)
+# MAIN MENU (UPDATED)
 # =========================
 def main():
     while True:
         print("\n==== PASSWORD SECURITY SYSTEM ====")
-        print("1. Check Password Strength")
-        print("2. Dictionary Attack Test")
-        print("3. SQL Injection Test")
-        print("4. Brute Force Login Test")
-        print("5. Exit")
+        print("1. Register User")
+        print("2. Login")
+        print("3. Check Password Strength")
+        print("4. Dictionary Attack Test")
+        print("5. SQL Injection Test")
+        print("6. Exit")
 
         choice = input("Select an option: ")
 
         if choice == "1":
+            register_user()
+
+        elif choice == "2":
+            login()
+
+        elif choice == "3":
             pwd = input("Enter password: ")
             print(check_password_strength(pwd))
 
-        elif choice == "2":
+        elif choice == "4":
             dictionary_attack_test()
 
-        elif choice == "3":
+        elif choice == "5":
             user_input = input("Enter input to test: ")
             sql_injection_test(user_input)
 
-        elif choice == "4":
-            brute_force_test()
-
-        elif choice == "5":
+        elif choice == "6":
             print("Exiting system...")
             break
 
